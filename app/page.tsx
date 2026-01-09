@@ -2,35 +2,40 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useUser } from "@/lib/useUser";
-import { supabase } from "@/lib/supabaseClient";
+import { useUser } from "../lib/useUser";
+import { supabase } from "../lib/supabaseClient";
 
 export default function Home() {
   const { user, loading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
+    const redirectByRole = async () => {
+      if (!loading && !user) {
+        router.push("/login");
+        return;
+      }
+
+      if (user) {
+        const { data, error } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        if (data.role === "owner") router.push("/owner/dashboard");
+        else if (data.role === "shop") router.push("/shop/dashboard");
+        else router.push("/search");
+      }
+    };
+
+    redirectByRole();
   }, [user, loading, router]);
 
-  if (loading) return <p>Loading...</p>;
-  if (!user) return null;
-
-  return (
-    <main style={{ padding: 40 }}>
-      <h1>Welcome</h1>
-      <p>You are logged in.</p>
-
-      <button
-        onClick={async () => {
-          await supabase.auth.signOut();
-          router.push("/login");
-        }}
-      >
-        Logout
-      </button>
-    </main>
-  );
+  return <p>Redirecting...</p>;
 }
